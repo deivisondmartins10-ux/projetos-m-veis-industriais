@@ -4038,24 +4038,41 @@ fbq('track', 'ViewContent', {
   updateTimer();
   setInterval(updateTimer, 1000);
 
-  // --- Exit intent (desktop: mouseleave top) ---
-  var exitShown = false;
+  // --- Exit intent: múltiplos métodos ---
+  var exitShown = sessionStorage.getItem('exitShown') === '1';
+
+  function showExit(){
+    if(exitShown) return;
+    exitShown = true;
+    sessionStorage.setItem('exitShown','1');
+    document.getElementById('exitOverlay').classList.add('active');
+  }
+
+  // Método 1: desktop — mouse sai pelo topo
   document.addEventListener('mouseleave', function(e){
-    if(e.clientY < 20 && !exitShown){
-      exitShown = true;
-      document.getElementById('exitOverlay').classList.add('active');
-    }
+    if(e.clientY <= 0) showExit();
   });
 
-  // --- Exit intent (mobile: scroll up fast) ---
-  var lastY = 0, lastTime = Date.now();
+  // Método 2: tab/app em segundo plano (mobile + desktop)
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden') showExit();
+  });
+
+  // Método 3: botão voltar (mobile)
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    showExit();
+  });
+
+  // Método 4: scroll rápido pra cima (mobile)
+  var lastY = window.scrollY, lastTime = Date.now();
   window.addEventListener('scroll', function(){
-    var y = window.scrollY;
-    var now = Date.now();
-    var speed = (lastY - y) / (now - lastTime);
-    if(speed > 2.5 && y > 300 && !exitShown){
-      exitShown = true;
-      document.getElementById('exitOverlay').classList.add('active');
+    var y = window.scrollY, now = Date.now();
+    var dt = now - lastTime;
+    if(dt > 0){
+      var speed = (lastY - y) / dt;
+      if(speed > 1.5 && y > 400) showExit();
     }
     lastY = y; lastTime = now;
   }, {passive:true});
